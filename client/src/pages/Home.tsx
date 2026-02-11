@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { Link } from 'wouter';
 import ModeSelector from '@/components/ModeSelector';
 import AmalgamaDisplay from '@/components/AmalgamaDisplay';
 import ProtocolView from '@/components/ProtocolView';
+import TaskTimer from '@/components/TaskTimer';
 
 type Mode = 'alpha' | 'beta' | 'gamma';
 type Tab = 'amalgama' | 'protocol';
@@ -10,6 +12,26 @@ type Tab = 'amalgama' | 'protocol';
 export default function Home() {
   const [activeMode, setActiveMode] = useState<Mode>('alpha');
   const [activeTab, setActiveTab] = useState<Tab>('amalgama');
+
+  // Load state from localStorage on mount
+  useEffect(() => {
+    const savedMode = localStorage.getItem('amalgama-mode') as Mode | null;
+    const savedTab = localStorage.getItem('amalgama-tab') as Tab | null;
+    if (savedMode) setActiveMode(savedMode);
+    if (savedTab) setActiveTab(savedTab);
+  }, []);
+
+  // Save mode to localStorage
+  const handleModeChange = (mode: Mode) => {
+    setActiveMode(mode);
+    localStorage.setItem('amalgama-mode', mode);
+  };
+
+  // Save tab to localStorage
+  const handleTabChange = (tab: Tab) => {
+    setActiveTab(tab);
+    localStorage.setItem('amalgama-tab', tab);
+  };
 
   const tabVariants = {
     hidden: { opacity: 0, y: 10 },
@@ -54,6 +76,15 @@ export default function Home() {
                   Инженерный протокол управления энергией и сознанием
                 </p>
               </div>
+              <Link href="/statistics">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="px-4 md:px-6 py-2 md:py-3 rounded-2xl bg-accent/20 text-accent font-semibold hover:bg-accent/30 transition-colors border border-accent/30"
+                >
+                  📊 Статистика
+                </motion.button>
+              </Link>
             </div>
           </div>
         </motion.header>
@@ -69,7 +100,7 @@ export default function Home() {
               className="lg:col-span-1 order-2 lg:order-1"
             >
               <div className="sticky top-20 lg:top-24">
-                <ModeSelector activeMode={activeMode} onModeChange={setActiveMode} />
+                <ModeSelector activeMode={activeMode} onModeChange={handleModeChange} />
               </div>
             </motion.aside>
 
@@ -88,10 +119,10 @@ export default function Home() {
                 ].map((tab) => (
                   <motion.button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
+                    onClick={() => handleTabChange(tab.id)}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    className={`px-4 md:px-6 py-2 md:py-3 rounded-2xl font-semibold transition-all duration-300 whitespace-nowrap text-sm md:text-base ${
+                    className={`px-4 md:px-6 py-2 md:py-3 rounded-2xl font-semibold transition-all duration-300 whitespace-nowrap text-base md:text-lg ${
                       activeTab === tab.id
                         ? 'bg-accent text-accent-foreground shadow-lg'
                         : 'bg-card/30 text-primary-foreground hover:bg-card/50 border border-primary-foreground/20'
@@ -132,6 +163,9 @@ export default function Home() {
             </motion.section>
           </div>
         </main>
+
+        {/* Task Timer */}
+        <TaskTimer taskName="Текущая задача" minTime={15} maxTime={60} />
 
         {/* Footer */}
         <motion.footer

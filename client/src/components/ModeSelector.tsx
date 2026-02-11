@@ -43,7 +43,7 @@ const modes = [
 export default function ModeSelector({ activeMode, onModeChange }: ModeSelectorProps) {
   return (
     <div className="space-y-4">
-      <h2 className="text-3xl font-bold text-primary-foreground mb-6">Режимы</h2>
+      <h2 className="text-3xl md:text-4xl font-bold text-primary-foreground mb-6">Режимы</h2>
       
       <AnimatePresence>
         {modes.map((mode) => (
@@ -88,9 +88,9 @@ export default function ModeSelector({ activeMode, onModeChange }: ModeSelectorP
                 {mode.icon}
               </motion.div>
               <div className="flex-1">
-                <h3 className="text-2xl font-bold text-accent mb-1">{mode.name}</h3>
-                <p className="text-sm text-primary-foreground/70 mb-2">{mode.subtitle}</p>
-                <p className="text-xs text-primary-foreground/60">{mode.description}</p>
+                <h3 className="text-2xl md:text-3xl font-bold text-accent mb-1">{mode.name}</h3>
+                <p className="text-base md:text-lg text-primary-foreground/70 mb-2">{mode.subtitle}</p>
+                <p className="text-sm md:text-base text-primary-foreground/60">{mode.description}</p>
               </div>
             </div>
 
@@ -120,9 +120,9 @@ export default function ModeSelector({ activeMode, onModeChange }: ModeSelectorP
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
-        className="mt-8 p-4 rounded-2xl bg-card/20 border border-primary-foreground/20"
+        className="mt-8 p-4 md:p-6 rounded-2xl bg-card/20 border border-primary-foreground/20"
       >
-        <p className="text-xs text-primary-foreground/60 leading-relaxed">
+        <p className="text-sm md:text-base text-primary-foreground/60 leading-relaxed">
           💡 <strong>Совет:</strong> Выберите режим в зависимости от времени пробуждения. Система автоматически адаптирует протокол.
         </p>
       </motion.div>

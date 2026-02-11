@@ -138,7 +138,7 @@ export default function AmalgamaDisplay() {
                 }}
                 transition={{ duration: 0.3 }}
               >
-                <p className="text-primary-foreground leading-relaxed italic text-sm">
+                <p className="text-primary-foreground leading-relaxed italic text-base md:text-lg">
                   "{block.text}"
                 </p>
               </motion.div>
@@ -154,7 +154,7 @@ export default function AmalgamaDisplay() {
                 className="overflow-hidden"
               >
                 <div className="pt-4 border-t border-primary-foreground/20">
-                  <p className="text-xs text-primary-foreground/80 leading-relaxed">
+                  <p className="text-sm md:text-base text-primary-foreground/80 leading-relaxed">
                     <strong>Пояснение:</strong> {block.explanation}
                   </p>
                 </div>
@@ -163,7 +163,7 @@ export default function AmalgamaDisplay() {
               {/* Click hint */}
               <motion.div
                 animate={{ opacity: expandedBlock === block.id ? 0.5 : 0.3 }}
-                className="mt-4 text-xs text-primary-foreground/50 text-right"
+                className="mt-4 text-sm text-primary-foreground/50 text-right"
               >
                 {expandedBlock === block.id ? '▼ Скрыть' : '▶ Подробнее'}
               </motion.div>
@@ -175,10 +175,10 @@ export default function AmalgamaDisplay() {
       {/* Instructions */}
       <motion.div
         variants={itemVariants}
-        className="mt-8 p-6 rounded-3xl bg-card/20 border border-primary-foreground/20"
+        className="mt-8 p-6 md:p-8 rounded-3xl bg-card/20 border border-primary-foreground/20"
       >
-        <h3 className="text-lg font-bold text-accent mb-3">Как использовать</h3>
-        <ul className="space-y-2 text-sm text-primary-foreground/80">
+        <h3 className="text-xl md:text-2xl font-bold text-accent mb-4">Как использовать</h3>
+        <ul className="space-y-2 text-base md:text-lg text-primary-foreground/80">
           <li>✓ Читайте амальгаму во время дыхательной гимнастики каждое утро</li>
           <li>✓ Проговаривайте вслух для большей эффективности</li>
           <li>✓ Фокусируйтесь на ощущениях в теле, а не на логике</li>
