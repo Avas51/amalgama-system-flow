@@ -16,7 +16,7 @@ interface Task {
 const protocols: Record<Mode, { title: string; description: string; tasks: Task[] }> = {
   alpha: {
     title: 'АЛЬФА',
-    description: 'Идеальный режим • Подъем в 4:00 • Личное время до 10:00',
+    description: 'Идеальный режим • Подъем в 4:00 • Личное время до 10:00 • Всего 360 минут',
     tasks: [
       { id: 'breathing', name: 'Дыхательная гимнастика', minTime: 15, maxTime: 15, completed: false, icon: '💨' },
       { id: 'exercise', name: 'Зарядка + Амальгама', minTime: 40, maxTime: 110, completed: false, icon: '⚡' },
@@ -29,7 +29,7 @@ const protocols: Record<Mode, { title: string; description: string; tasks: Task[
   },
   beta: {
     title: 'БЕТА',
-    description: 'Адаптивный режим • Подъем 5:00 – 6:30 • 210 минут',
+    description: 'Адаптивный режим • Подъем 5:00 – 6:30 • Личное время до 10:00 • Всего 210 минут',
     tasks: [
       { id: 'breathing', name: 'Дыхательная гимнастика', minTime: 15, maxTime: 15, completed: false, icon: '💨' },
       { id: 'exercise', name: 'Зарядка + Амальгама', minTime: 40, maxTime: 40, completed: false, icon: '⚡' },
@@ -42,7 +42,7 @@ const protocols: Record<Mode, { title: string; description: string; tasks: Task[
   },
   gamma: {
     title: 'ГАММА',
-    description: 'Кризисный режим • Подъем 7:00 – 7:30 • 150 минут',
+    description: 'Кризисный режим • Подъем 7:00 – 7:30 • Личное время до 10:00 • Всего 150 минут',
     tasks: [
       { id: 'breathing', name: 'Дыхательная гимнастика', minTime: 10, maxTime: 10, completed: false, icon: '💨' },
       { id: 'exercise', name: 'Зарядка + Амальгама', minTime: 15, maxTime: 15, completed: false, icon: '⚡' },
