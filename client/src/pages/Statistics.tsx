@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'wouter';
 import { Button } from '@/components/ui/button';
+import { syncStatsWithGist } from '@/lib/gist';
 
 interface DayStats {
   date: string;
@@ -16,32 +17,45 @@ export default function Statistics() {
   const [stats, setStats] = useState<DayStats[]>([]);
   const [selectedMode, setSelectedMode] = useState<'all' | 'alpha' | 'beta' | 'gamma'>('all');
 
-  // Load stats from localStorage
+  // Load stats from Gist and localStorage
   useEffect(() => {
-    const savedStats = localStorage.getItem('amalgama-stats');
-    if (savedStats) {
-      try {
-        setStats(JSON.parse(savedStats));
-      } catch (e) {
-        console.error('Failed to parse stats:', e);
+    const loadStats = async () => {
+      // Sync with Gist (loads from cloud, merges with local)
+      const mergedStats = await syncStatsWithGist();
+      if (mergedStats) {
+        setStats(mergedStats);
+      } else {
+        // Fallback to localStorage if Gist fails
+        const savedStats = localStorage.getItem('amalgama-stats');
+        if (savedStats) {
+          try {
+            setStats(JSON.parse(savedStats));
+          } catch (e) {
+            console.error('Failed to parse stats:', e);
+          }
+        }
       }
-    }
+    };
+    
+    loadStats();
   }, []);
 
   const filteredStats = selectedMode === 'all' 
     ? stats 
-    : stats.filter(s => s.mode === selectedMode);
+    : stats.filter(s => s && s.mode === selectedMode);
 
   const modeStats = {
-    alpha: stats.filter(s => s.mode === 'alpha'),
-    beta: stats.filter(s => s.mode === 'beta'),
-    gamma: stats.filter(s => s.mode === 'gamma'),
+    alpha: stats.filter(s => s && s.mode === 'alpha'),
+    beta: stats.filter(s => s && s.mode === 'beta'),
+    gamma: stats.filter(s => s && s.mode === 'gamma'),
   };
 
   const calculateAverageCompletion = (modeStats: DayStats[]) => {
     if (modeStats.length === 0) return 0;
-    const total = modeStats.reduce((sum, s) => sum + s.completionPercent, 0);
-    return Math.round(total / modeStats.length);
+    const validStats = modeStats.filter(s => s && typeof s.completionPercent === 'number');
+    if (validStats.length === 0) return 0;
+    const total = validStats.reduce((sum, s) => sum + s.completionPercent, 0);
+    return Math.round(total / validStats.length);
   };
 
   const containerVariants = {
@@ -170,7 +184,7 @@ export default function Statistics() {
         >
           <h3 className="text-xl md:text-2xl font-bold text-accent mb-6">История выполнения</h3>
           <div className="space-y-3">
-            {filteredStats.slice().reverse().map((day, index) => (
+            {filteredStats.filter(d => d).slice().reverse().map((day, index) => (
               <motion.div
                 key={day.date}
                 initial={{ opacity: 0, x: -20 }}
@@ -181,10 +195,10 @@ export default function Statistics() {
                 {/* Date */}
                 <div className="flex-shrink-0 w-24">
                   <p className="text-sm md:text-base font-semibold text-primary-foreground">
-                    {new Date(day.date).toLocaleDateString('ru-RU', {
+                    {day.date ? new Date(day.date).toLocaleDateString('ru-RU', {
                       month: 'short',
                       day: 'numeric',
-                    })}
+                    }) : 'N/A'}
                   </p>
                 </div>
 
@@ -195,7 +209,7 @@ export default function Statistics() {
                     day.mode === 'beta' ? 'bg-amber-500/30 text-amber-200' :
                     'bg-red-500/30 text-red-200'
                   }`}>
-                    {day.mode.toUpperCase()}
+                    {day.mode ? day.mode.toUpperCase() : 'UNKNOWN'}
                   </span>
                 </div>
 
