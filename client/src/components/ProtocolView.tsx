@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
+import { saveStatsToFirebase } from '@/lib/firebase';
 
 type Mode = 'alpha' | 'beta' | 'gamma';
 
@@ -132,6 +133,11 @@ export default function ProtocolView({ mode }: ProtocolViewProps) {
     }
     
     localStorage.setItem('amalgama-stats', JSON.stringify(statsArray));
+    
+    // Sync to Firebase
+    saveStatsToFirebase({
+      'amalgama-stats': JSON.stringify(statsArray),
+    }).catch(err => console.error('Failed to sync stats to Firebase:', err));
   }, [tasks, mode, completedCount]);
 
   const containerVariants = {
