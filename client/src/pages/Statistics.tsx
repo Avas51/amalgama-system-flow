@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useRouter } from 'wouter';
+import { Button } from '@/components/ui/button';
 
 interface DayStats {
   date: string;
@@ -10,6 +12,7 @@ interface DayStats {
 }
 
 export default function Statistics() {
+  const router = useRouter();
   const [stats, setStats] = useState<DayStats[]>([]);
   const [selectedMode, setSelectedMode] = useState<'all' | 'alpha' | 'beta' | 'gamma'>('all');
 
@@ -68,12 +71,21 @@ export default function Statistics() {
       initial="hidden"
       animate="visible"
     >
-      {/* Header */}
-      <motion.div variants={itemVariants} className="mb-8">
-        <h2 className="text-4xl md:text-5xl font-bold text-accent mb-2">Статистика</h2>
-        <p className="text-base md:text-lg text-primary-foreground/70">
-          Отслеживайте ваш прогресс и успешные паттерны
-        </p>
+      {/* Header with back button */}
+      <motion.div variants={itemVariants} className="mb-8 flex items-start justify-between">
+        <div>
+          <h2 className="text-4xl md:text-5xl font-bold text-accent mb-2">Статистика</h2>
+          <p className="text-base md:text-lg text-primary-foreground/70">
+            Отслеживайте ваш прогресс и успешные паттерны
+          </p>
+        </div>
+        <Button
+          onClick={() => window.history.back()}
+          variant="outline"
+          className="mt-2"
+        >
+          ← Назад
+        </Button>
       </motion.div>
 
       {/* Mode filter */}

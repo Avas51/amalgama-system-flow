@@ -5,8 +5,8 @@ const amalgamaBlocks = [
   {
     id: 1,
     title: 'Согласие и Потенциал',
-    text: 'Я живу в согласии с собой и моим миром. Мой сжатый потенциал плавно раскрывается, превращаясь в поток чистой созидательной силы. Я выбираю благополучие как свой естественный и безопасный путь. Мой мир обеспечивает мой абсолютный комфорт и стабильность.',
-    explanation: 'Этот блок устраняет внутренние конфликты. Мы признаем наличие огромной энергии (сжатого потенциала) и даем ей команду на безопасное раскрытие. Фраза «мой мир» утверждает вашу субъектность.',
+    text: 'Я живу в согласии с собой и моим миром. Мой сжатый потенциал плавно раскрывается, превращаясь в поток чистой созидательной силы. Я выбираю благополучие как мой естественный и гармоничный путь. Мой мир обеспечивает мой абсолютный комфорт и стабильность.',
+    explanation: 'Этот блок устраняет внутренние конфликты. Мы признаем наличие огромной энергии (сжатого потенциала) и даем ей команду на гармоничное раскрытие. Фраза «мой мир» утверждает вашу субъектность.',
     color: 'from-blue-500/20 to-blue-600/20',
     accentColor: '#3b82f6',
     icon: '🌀',
@@ -120,7 +120,7 @@ export default function AmalgamaDisplay() {
                 </motion.div>
                 <div className="flex-1">
                   <h3
-                    className="text-xl font-bold mb-1 transition-colors duration-300"
+                    className="text-2xl md:text-3xl font-bold mb-1 transition-colors duration-300"
                     style={{
                       color: expandedBlock === block.id ? block.accentColor : '#c86432',
                     }}
@@ -138,7 +138,7 @@ export default function AmalgamaDisplay() {
                 }}
                 transition={{ duration: 0.3 }}
               >
-                <p className="text-primary-foreground leading-relaxed italic text-base md:text-lg">
+                <p className="text-lg md:text-xl text-primary-foreground leading-relaxed italic">
                   "{block.text}"
                 </p>
               </motion.div>
@@ -154,7 +154,7 @@ export default function AmalgamaDisplay() {
                 className="overflow-hidden"
               >
                 <div className="pt-4 border-t border-primary-foreground/20">
-                  <p className="text-sm md:text-base text-primary-foreground/80 leading-relaxed">
+                  <p className="text-base md:text-lg text-primary-foreground/80 leading-relaxed">
                     <strong>Пояснение:</strong> {block.explanation}
                   </p>
                 </div>
