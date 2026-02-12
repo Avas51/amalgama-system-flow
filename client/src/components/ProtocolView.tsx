@@ -1,7 +1,6 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { syncStatsWithSheets } from '@/lib/sheets';
 
 type Mode = 'alpha' | 'beta' | 'gamma';
 
@@ -133,9 +132,6 @@ export default function ProtocolView({ mode }: ProtocolViewProps) {
     }
     
     localStorage.setItem('amalgama-stats', JSON.stringify(statsArray));
-    
-    // Sync to Sheets
-    syncStatsWithSheets().catch(err => console.error('Failed to sync stats to Sheets:', err));
   }, [tasks, mode, completedCount]);
 
   const containerVariants = {
