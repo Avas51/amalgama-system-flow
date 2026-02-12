@@ -45,8 +45,7 @@ const protocols: Record<Mode, { title: string; description: string; tasks: Task[
     description: 'Кризисный режим • Подъем 7:00 – 7:30 • 150 минут',
     tasks: [
       { id: 'breathing', name: 'Дыхательная гимнастика', minTime: 10, maxTime: 10, completed: false, icon: '💨' },
-      { id: 'exercise', name: 'Зарядка', minTime: 15, maxTime: 15, completed: false, icon: '⚡' },
-      { id: 'amalgama', name: 'Амальгама (прочитать)', minTime: 2, maxTime: 2, completed: false, icon: '✨' },
+      { id: 'exercise', name: 'Зарядка + Амальгама', minTime: 15, maxTime: 15, completed: false, icon: '⚡' },
       { id: 'learning', name: 'Обучение/Чтение', minTime: 20, maxTime: 20, completed: false, icon: '📚' },
       { id: 'personal', name: 'Списки To-Do', minTime: 10, maxTime: 10, completed: false, icon: '📋' },
       { id: 'work', name: 'Битрикс24', minTime: 10, maxTime: 10, completed: false, icon: '⚙️' },
