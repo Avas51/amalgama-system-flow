@@ -16,7 +16,7 @@ interface Task {
 const protocols: Record<Mode, { title: string; description: string; tasks: Task[] }> = {
   alpha: {
     title: 'АЛЬФА',
-    description: 'Идеальный режим • Подъем в 4:00 • Личное время до 10:00 • Всего 360 минут',
+    description: 'Идеальный режим • Подъем в 4:00 • 360 мин',
     tasks: [
       { id: 'breathing', name: 'Дыхательная гимнастика', minTime: 15, maxTime: 15, completed: false, icon: '💨' },
       { id: 'exercise', name: 'Зарядка + Амальгама', minTime: 40, maxTime: 110, completed: false, icon: '⚡' },
@@ -29,7 +29,7 @@ const protocols: Record<Mode, { title: string; description: string; tasks: Task[
   },
   beta: {
     title: 'БЕТА',
-    description: 'Адаптивный режим • Подъем 5:00 – 6:30 • Личное время до 10:00 • Всего 210 минут',
+    description: 'Адаптивный режим • Подъем 5:00–6:30 • 210 мин',
     tasks: [
       { id: 'breathing', name: 'Дыхательная гимнастика', minTime: 15, maxTime: 15, completed: false, icon: '💨' },
       { id: 'exercise', name: 'Зарядка + Амальгама', minTime: 40, maxTime: 40, completed: false, icon: '⚡' },
@@ -42,7 +42,7 @@ const protocols: Record<Mode, { title: string; description: string; tasks: Task[
   },
   gamma: {
     title: 'ГАММА',
-    description: 'Кризисный режим • Подъем 7:00 – 7:30 • Личное время до 10:00 • Всего 150 минут',
+    description: 'Кризисный режим • Подъем 7:00–7:30 • 150 мин',
     tasks: [
       { id: 'breathing', name: 'Дыхательная гимнастика', minTime: 10, maxTime: 10, completed: false, icon: '💨' },
       { id: 'exercise', name: 'Зарядка + Амальгама', minTime: 15, maxTime: 15, completed: false, icon: '⚡' },
@@ -103,6 +103,9 @@ export default function ProtocolView({ mode }: ProtocolViewProps) {
   const progressPercent = (completedCount / tasks.length) * 100;
 
   useEffect(() => {
+    // Only save stats if there are completed tasks
+    if (completedCount === 0) return;
+    
     const today = new Date().toISOString().split('T')[0];
     const completionPercent = Math.round((completedCount / tasks.length) * 100);
     
@@ -115,7 +118,7 @@ export default function ProtocolView({ mode }: ProtocolViewProps) {
     };
     
     const savedStats = localStorage.getItem('amalgama-stats');
-    let statsArray = [];
+    let statsArray: any[] = [];
     if (savedStats) {
       try {
         statsArray = JSON.parse(savedStats);
@@ -124,12 +127,11 @@ export default function ProtocolView({ mode }: ProtocolViewProps) {
       }
     }
     
-    const existingIndex = statsArray.findIndex((s: any) => s.date === today && s.mode === mode);
-    if (existingIndex >= 0) {
-      statsArray[existingIndex] = stats;
-    } else if (completedCount > 0) {
-      statsArray.push(stats);
-    }
+    // Remove any existing entries for today (only keep one entry per day)
+    statsArray = statsArray.filter((s: any) => s.date !== today);
+    
+    // Add current day's stats
+    statsArray.push(stats);
     
     localStorage.setItem('amalgama-stats', JSON.stringify(statsArray));
   }, [tasks, mode, completedCount]);
@@ -139,139 +141,111 @@ export default function ProtocolView({ mode }: ProtocolViewProps) {
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.05,
-        delayChildren: 0.1,
+        staggerChildren: 0.03,
+        delayChildren: 0.05,
       },
     },
   };
 
   const itemVariants = {
-    hidden: { opacity: 0, x: -20 },
+    hidden: { opacity: 0, y: 10 },
     visible: {
       opacity: 1,
-      x: 0,
-      transition: { duration: 0.4 },
+      y: 0,
+      transition: { duration: 0.3 },
     },
   };
 
   return (
     <motion.div
-      className="space-y-6"
+      className="space-y-3"
       variants={containerVariants}
       initial="hidden"
       animate="visible"
     >
-      {/* Header */}
-      <motion.div variants={itemVariants} className="mb-8">
-        <h2 className="text-4xl md:text-5xl font-bold text-accent mb-2">{protocol.title}</h2>
-        <p className="text-base md:text-lg text-primary-foreground/70">{protocol.description}</p>
-      </motion.div>
-
-      {/* Progress bar */}
-      <motion.div
-        variants={itemVariants}
-        className="p-6 md:p-8 rounded-3xl bg-card/30 border border-primary-foreground/20"
-      >
-        <div className="flex justify-between items-center mb-4">
-          <span className="text-base md:text-lg font-semibold text-primary-foreground">
-            Прогресс: {completedCount} из {tasks.length}
-          </span>
-          <span className="text-sm md:text-base text-primary-foreground/60">
-            {totalMinTime}–{totalMaxTime} мин
-          </span>
+      {/* Header - compact */}
+      <motion.div variants={itemVariants} className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl md:text-3xl font-bold text-accent">{protocol.title}</h2>
+          <p className="text-xs text-primary-foreground/60">{protocol.description}</p>
         </div>
-        <div className="w-full h-3 bg-card/50 rounded-full overflow-hidden">
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${progressPercent}%` }}
-            transition={{ duration: 0.6 }}
-            className="h-full bg-gradient-to-r from-accent to-secondary rounded-full"
-          />
+        <div className="text-right">
+          <div className="text-lg font-bold text-accent">{completedCount}/{tasks.length}</div>
+          <div className="text-xs text-primary-foreground/50">{totalMinTime}–{totalMaxTime} мин</div>
         </div>
       </motion.div>
 
-      {/* Tasks list */}
+      {/* Progress bar - thin */}
+      <motion.div variants={itemVariants} className="w-full h-1.5 bg-card/50 rounded-full overflow-hidden">
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${progressPercent}%` }}
+          transition={{ duration: 0.5 }}
+          className="h-full bg-gradient-to-r from-accent to-secondary rounded-full"
+        />
+      </motion.div>
+
+      {/* Tasks list - compact */}
       <motion.div
-        className="space-y-3"
+        className="space-y-1"
         variants={containerVariants}
       >
-        {tasks.map((task, index) => (
+        {tasks.map((task) => (
           <motion.button
             key={task.id}
             variants={itemVariants}
             onClick={() => toggleTaskComplete(task.id)}
-            className={`w-full p-4 rounded-2xl cursor-pointer transition-all duration-300 border-2 text-left ${
+            className={`w-full p-2 rounded-xl cursor-pointer transition-all duration-200 border text-left ${
               task.completed
-                ? 'bg-card/40 border-accent/50 opacity-60'
-                : 'bg-card/30 border-primary-foreground/20 hover:bg-card/40 hover:border-accent/30'
+                ? 'bg-card/30 border-accent/30 opacity-50'
+                : 'bg-card/20 border-primary-foreground/10 hover:bg-card/30 hover:border-accent/20'
             }`}
           >
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
               {/* Checkbox */}
               <motion.div
-                animate={{ scale: task.completed ? 1.1 : 1 }}
-                className={`flex-shrink-0 w-6 h-6 rounded-lg border-2 flex items-center justify-center font-bold ${
+                animate={{ scale: task.completed ? 1.05 : 1 }}
+                className={`flex-shrink-0 w-5 h-5 rounded border flex items-center justify-center text-xs font-bold ${
                   task.completed
                     ? 'bg-accent border-accent text-accent-foreground'
-                    : 'border-primary-foreground/40'
+                    : 'border-primary-foreground/30'
                 }`}
               >
                 {task.completed && '✓'}
               </motion.div>
 
-              {/* Icon and name */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl md:text-3xl flex-shrink-0">{task.icon}</span>
-                  <span
-                    className={`font-semibold truncate text-base md:text-lg ${
-                      task.completed
-                        ? 'text-primary-foreground/50 line-through'
-                        : 'text-primary-foreground'
-                    }`}
-                  >
-                    {task.name}
-                  </span>
-                </div>
-              </div>
+              {/* Icon */}
+              <span className="text-lg flex-shrink-0">{task.icon}</span>
 
-              {/* Time range */}
-              <div className="text-right flex-shrink-0">
-                <span className="text-base md:text-lg font-mono text-primary-foreground/70">
-                  {task.minTime}
-                  {task.minTime !== task.maxTime ? `–${task.maxTime}` : ''}
-                  <span className="text-sm ml-1">мин</span>
-                </span>
-              </div>
+              {/* Name */}
+              <span
+                className={`flex-1 truncate text-sm ${
+                  task.completed
+                    ? 'text-primary-foreground/40 line-through'
+                    : 'text-primary-foreground/90'
+                }`}
+              >
+                {task.name}
+              </span>
+
+              {/* Time */}
+              <span className="text-xs font-mono text-primary-foreground/50 flex-shrink-0">
+                {task.minTime}{task.minTime !== task.maxTime ? `–${task.maxTime}` : ''} мин
+              </span>
             </div>
           </motion.button>
         ))}
       </motion.div>
 
-      {/* Key rule */}
-      <motion.div
-        variants={itemVariants}
-        className="p-6 md:p-8 rounded-3xl bg-gradient-to-br from-secondary/20 to-accent/20 border border-primary-foreground/20"
-      >
-        <h3 className="text-xl md:text-2xl font-bold text-accent mb-4">⚙️ Золотое правило</h3>
-        <p className="text-primary-foreground/80 leading-relaxed text-base md:text-lg">
-          Как только вы понимаете, что «идеальное время» упущено, вы официально объявляете: 
-          <span className="block mt-3 font-bold text-accent text-lg md:text-xl">
-            «Официально объявляю: Система переходит в Режим {protocol.title}»
-          </span>
-          Это мгновенно убирает неопределенность и сохраняет контроль.
-        </p>
-      </motion.div>
-
       {/* Completion message */}
       {completedCount === tasks.length && (
         <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
+          initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="p-6 md:p-8 rounded-3xl bg-gradient-to-br from-green-500/20 to-green-600/20 border border-green-400/30 text-center"
+          className="p-3 rounded-xl bg-green-500/20 border border-green-400/30 text-center"
         >
-          <p className="text-xl md:text-2xl font-bold text-green-300">
-            ✨ Все задачи завершены! Отличная работа!
+          <p className="text-sm font-bold text-green-300">
+            ✨ Все задачи завершены!
           </p>
         </motion.div>
       )}
