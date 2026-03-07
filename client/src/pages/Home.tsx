@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'wouter';
+import { toast } from 'sonner';
 import ModeSelector from '@/components/ModeSelector';
 import GoldenRule from '@/components/GoldenRule';
 import AmalgamaDisplay from '@/components/AmalgamaDisplay';
 import ProtocolView from '@/components/ProtocolView';
 import TaskTimer from '@/components/TaskTimer';
+import { getUserId, setUserId } from '@/lib/statsService';
 
 type Mode = 'alpha' | 'beta' | 'gamma';
 type Tab = 'amalgama' | 'protocol';
@@ -13,6 +15,8 @@ type Tab = 'amalgama' | 'protocol';
 export default function Home() {
   const [activeMode, setActiveMode] = useState<Mode>('alpha');
   const [activeTab, setActiveTab] = useState<Tab>('amalgama');
+  const [showSyncPanel, setShowSyncPanel] = useState(false);
+  const [newUserId, setNewUserId] = useState('');
 
   // Load state from localStorage on mount
   useEffect(() => {
@@ -32,6 +36,18 @@ export default function Home() {
   const handleTabChange = (tab: Tab) => {
     setActiveTab(tab);
     localStorage.setItem('amalgama-tab', tab);
+  };
+
+  const handleCopyUserId = () => {
+    const userId = getUserId();
+    navigator.clipboard.writeText(userId);
+    toast.success('ID скопирован!', { duration: 2000 });
+  };
+
+  const handleSetUserId = () => {
+    if (newUserId.trim()) {
+      setUserId(newUserId.trim());
+    }
   };
 
   const tabVariants = {
@@ -72,15 +88,80 @@ export default function Home() {
               <div>
                 <h1 className="text-2xl font-bold text-accent">⚙️ Амальгама</h1>
               </div>
-              <Link href="/statistics">
+              <div className="flex items-center gap-2">
+                {/* Sync button */}
                 <motion.button
                   whileTap={{ scale: 0.95 }}
-                  className="px-3 py-1.5 rounded-xl bg-accent/20 text-accent text-sm font-medium hover:bg-accent/30 transition-colors border border-accent/30"
+                  onClick={() => setShowSyncPanel(!showSyncPanel)}
+                  className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors border ${
+                    showSyncPanel 
+                      ? 'bg-accent text-accent-foreground border-accent' 
+                      : 'bg-card/30 text-primary-foreground/80 hover:bg-card/50 border-primary-foreground/10'
+                  }`}
                 >
-                  📊 Статистика
+                  🔗 Синхр.
                 </motion.button>
-              </Link>
+                <Link href="/statistics">
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    className="px-3 py-1.5 rounded-xl bg-accent/20 text-accent text-sm font-medium hover:bg-accent/30 transition-colors border border-accent/30"
+                  >
+                    📊 Статистика
+                  </motion.button>
+                </Link>
+              </div>
             </div>
+            
+            {/* Sync panel */}
+            <AnimatePresence>
+              {showSyncPanel && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="mt-3 p-3 rounded-xl bg-card/30 border border-primary-foreground/10 space-y-3">
+                    <div className="text-xs text-primary-foreground/60">
+                      Ваш ID для синхронизации между устройствами:
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 px-3 py-2 rounded-lg bg-card/50 text-xs font-mono text-primary-foreground/80 truncate">
+                        {getUserId()}
+                      </div>
+                      <button
+                        onClick={handleCopyUserId}
+                        className="px-3 py-2 rounded-lg bg-accent/20 text-accent text-xs hover:bg-accent/30 transition-colors"
+                      >
+                        📋 Копировать
+                      </button>
+                    </div>
+                    
+                    <div className="text-xs text-primary-foreground/40 pt-2 border-t border-primary-foreground/10">
+                      Введите ID с другого устройства:
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={newUserId}
+                        onChange={(e) => setNewUserId(e.target.value)}
+                        placeholder="user_1234567890_abc123"
+                        className="flex-1 px-3 py-2 rounded-lg bg-card/50 text-xs text-primary-foreground/80 placeholder:text-primary-foreground/30 outline-none border border-primary-foreground/10 focus:border-accent/50"
+                      />
+                      <button
+                        onClick={handleSetUserId}
+                        disabled={!newUserId.trim()}
+                        className="px-3 py-2 rounded-lg bg-accent/20 text-accent text-xs hover:bg-accent/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Применить
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </motion.header>
 
