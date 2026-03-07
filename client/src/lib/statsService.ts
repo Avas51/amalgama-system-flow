@@ -7,7 +7,8 @@ import {
   query, 
   orderBy,
   onSnapshot,
-  deleteDoc
+  deleteDoc,
+  getDoc
 } from 'firebase/firestore';
 
 export interface DayStats {
@@ -19,8 +20,32 @@ export interface DayStats {
   updatedAt: number;
 }
 
+export interface TaskState {
+  id: string;
+  completed: boolean;
+}
+
+export interface DayTasks {
+  date: string;
+  mode: 'alpha' | 'beta' | 'gamma';
+  tasks: TaskState[];
+  updatedAt: number;
+}
+
+// Get current user ID
+export function getUserId(): string {
+  return localStorage.getItem('amalgama-user-id') || '';
+}
+
+// Set user ID (for syncing between devices)
+export function setUserId(newUserId: string): void {
+  localStorage.setItem('amalgama-user-id', newUserId);
+  // Reload to apply new user ID
+  window.location.reload();
+}
+
 // Get or create user ID
-function getUserId(): string {
+function getOrCreateUserId(): string {
   let userId = localStorage.getItem('amalgama-user-id');
   if (!userId) {
     userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
@@ -29,12 +54,18 @@ function getUserId(): string {
   return userId;
 }
 
-const USER_ID = getUserId();
+let CURRENT_USER_ID = getOrCreateUserId();
+
+// Update current user ID (without reload)
+export function updateCurrentUserId(newUserId: string): void {
+  CURRENT_USER_ID = newUserId;
+  localStorage.setItem('amalgama-user-id', newUserId);
+}
 
 // Save stats to Firestore
 export async function saveStatsToFirestore(stats: DayStats): Promise<void> {
   try {
-    const docRef = doc(db, 'users', USER_ID, 'stats', stats.date);
+    const docRef = doc(db, 'users', CURRENT_USER_ID, 'stats', stats.date);
     await setDoc(docRef, {
       ...stats,
       updatedAt: Date.now()
@@ -45,10 +76,59 @@ export async function saveStatsToFirestore(stats: DayStats): Promise<void> {
   }
 }
 
+// Save task states to Firestore
+export async function saveTasksToFirestore(date: string, mode: 'alpha' | 'beta' | 'gamma', tasks: TaskState[]): Promise<void> {
+  try {
+    const docRef = doc(db, 'users', CURRENT_USER_ID, 'tasks', date);
+    await setDoc(docRef, {
+      date,
+      mode,
+      tasks,
+      updatedAt: Date.now()
+    });
+    console.log('Tasks saved to Firestore');
+  } catch (error) {
+    console.error('Error saving tasks to Firestore:', error);
+  }
+}
+
+// Load task states from Firestore
+export async function loadTasksFromFirestore(date: string): Promise<DayTasks | null> {
+  try {
+    const docRef = doc(db, 'users', CURRENT_USER_ID, 'tasks', date);
+    const docSnap = await getDoc(docRef);
+    
+    if (docSnap.exists()) {
+      return docSnap.data() as DayTasks;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error loading tasks from Firestore:', error);
+    return null;
+  }
+}
+
+// Subscribe to real-time task updates
+export function subscribeToTasks(date: string, callback: (data: DayTasks | null) => void): () => void {
+  const docRef = doc(db, 'users', CURRENT_USER_ID, 'tasks', date);
+  
+  const unsubscribe = onSnapshot(docRef, (docSnap) => {
+    if (docSnap.exists()) {
+      callback(docSnap.data() as DayTasks);
+    } else {
+      callback(null);
+    }
+  }, (error) => {
+    console.error('Error subscribing to tasks:', error);
+  });
+  
+  return unsubscribe;
+}
+
 // Delete stats for a specific date
 export async function deleteStatsForDate(date: string): Promise<void> {
   try {
-    const docRef = doc(db, 'users', USER_ID, 'stats', date);
+    const docRef = doc(db, 'users', CURRENT_USER_ID, 'stats', date);
     await deleteDoc(docRef);
   } catch (error) {
     console.error('Error deleting stats:', error);
@@ -58,7 +138,7 @@ export async function deleteStatsForDate(date: string): Promise<void> {
 // Load all stats from Firestore
 export async function loadStatsFromFirestore(): Promise<DayStats[]> {
   try {
-    const statsRef = collection(db, 'users', USER_ID, 'stats');
+    const statsRef = collection(db, 'users', CURRENT_USER_ID, 'stats');
     const q = query(statsRef, orderBy('date'));
     const querySnapshot = await getDocs(q);
     
@@ -74,9 +154,9 @@ export async function loadStatsFromFirestore(): Promise<DayStats[]> {
   }
 }
 
-// Subscribe to real-time updates
+// Subscribe to real-time stats updates
 export function subscribeToStats(callback: (stats: DayStats[]) => void): () => void {
-  const statsRef = collection(db, 'users', USER_ID, 'stats');
+  const statsRef = collection(db, 'users', CURRENT_USER_ID, 'stats');
   const q = query(statsRef, orderBy('date'));
   
   const unsubscribe = onSnapshot(q, (querySnapshot) => {
@@ -90,4 +170,9 @@ export function subscribeToStats(callback: (stats: DayStats[]) => void): () => v
   });
   
   return unsubscribe;
+}
+
+// Get current user ID for external use
+export function getCurrentUserId(): string {
+  return CURRENT_USER_ID;
 }

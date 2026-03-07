@@ -1,7 +1,16 @@
-import { motion } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
-import { saveStatsToFirestore, DayStats } from '@/lib/statsService';
+import { 
+  saveStatsToFirestore, 
+  saveTasksToFirestore, 
+  subscribeToTasks, 
+  getUserId, 
+  setUserId,
+  getCurrentUserId,
+  DayStats,
+  TaskState
+} from '@/lib/statsService';
 
 type Mode = 'alpha' | 'beta' | 'gamma';
 
@@ -61,23 +70,71 @@ interface ProtocolViewProps {
 
 export default function ProtocolView({ mode }: ProtocolViewProps) {
   const protocol = protocols[mode];
-  const [tasks, setTasks] = useState(protocol.tasks);
+  const [tasks, setTasks] = useState<Task[]>(protocol.tasks);
+  const [showSyncPanel, setShowSyncPanel] = useState(false);
+  const [newUserId, setNewUserId] = useState('');
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<number | null>(null);
 
+  const today = new Date().toISOString().split('T')[0];
+
+  // Load tasks from localStorage on mount
   useEffect(() => {
-    const today = new Date().toISOString().split('T')[0];
     const savedKey = `amalgama-tasks-${mode}-${today}`;
     const savedTasks = localStorage.getItem(savedKey);
     
     if (savedTasks) {
       try {
-        setTasks(JSON.parse(savedTasks));
+        const parsed = JSON.parse(savedTasks);
+        // Merge with protocol tasks to get all properties
+        const merged = protocol.tasks.map(task => {
+          const saved = parsed.find((t: Task) => t.id === task.id);
+          return saved ? { ...task, completed: saved.completed } : task;
+        });
+        setTasks(merged);
       } catch (e) {
         setTasks(protocol.tasks);
       }
     } else {
       setTasks(protocol.tasks);
     }
-  }, [mode, protocol.tasks]);
+  }, [mode, protocol.tasks, today]);
+
+  // Subscribe to real-time updates from Firestore
+  useEffect(() => {
+    const unsubscribe = subscribeToTasks(today, (data) => {
+      if (data && data.tasks) {
+        setIsSyncing(true);
+        setTasks(prev => {
+          const merged = prev.map(task => {
+            const remoteTask = data.tasks.find(t => t.id === task.id);
+            return remoteTask ? { ...task, completed: remoteTask.completed } : task;
+          });
+          
+          // Save to localStorage
+          const savedKey = `amalgama-tasks-${mode}-${today}`;
+          localStorage.setItem(savedKey, JSON.stringify(merged));
+          
+          return merged;
+        });
+        setLastSyncTime(data.updatedAt);
+        setTimeout(() => setIsSyncing(false), 500);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [mode, today]);
+
+  // Save tasks to Firestore whenever they change
+  const saveTasks = useCallback((updatedTasks: Task[]) => {
+    const taskStates: TaskState[] = updatedTasks.map(t => ({
+      id: t.id,
+      completed: t.completed
+    }));
+    
+    saveTasksToFirestore(today, mode, taskStates);
+    setLastSyncTime(Date.now());
+  }, [mode, today]);
 
   const toggleTaskComplete = (id: string) => {
     setTasks((prev) => {
@@ -85,9 +142,12 @@ export default function ProtocolView({ mode }: ProtocolViewProps) {
         task.id === id ? { ...task, completed: !task.completed } : task
       );
       
-      const today = new Date().toISOString().split('T')[0];
+      // Save to localStorage
       const savedKey = `amalgama-tasks-${mode}-${today}`;
       localStorage.setItem(savedKey, JSON.stringify(updated));
+      
+      // Save to Firestore
+      saveTasks(updated);
       
       const task = updated.find(t => t.id === id);
       if (task?.completed) {
@@ -98,16 +158,11 @@ export default function ProtocolView({ mode }: ProtocolViewProps) {
     });
   };
 
-  const totalMinTime = tasks.reduce((sum, task) => sum + task.minTime, 0);
-  const totalMaxTime = tasks.reduce((sum, task) => sum + task.maxTime, 0);
-  const completedCount = tasks.filter((task) => task.completed).length;
-  const progressPercent = (completedCount / tasks.length) * 100;
-
+  // Save stats to Firestore
   useEffect(() => {
-    // Only save stats if there are completed tasks
+    const completedCount = tasks.filter(t => t.completed).length;
     if (completedCount === 0) return;
     
-    const today = new Date().toISOString().split('T')[0];
     const completionPercent = Math.round((completedCount / tasks.length) * 100);
     
     const stats: DayStats = {
@@ -119,7 +174,6 @@ export default function ProtocolView({ mode }: ProtocolViewProps) {
       updatedAt: Date.now(),
     };
     
-    // Save to Firestore
     saveStatsToFirestore(stats);
     
     // Also save to localStorage as backup
@@ -133,14 +187,27 @@ export default function ProtocolView({ mode }: ProtocolViewProps) {
       }
     }
     
-    // Remove any existing entries for today (only keep one entry per day)
     statsArray = statsArray.filter((s: any) => s.date !== today);
-    
-    // Add current day's stats
     statsArray.push(stats);
-    
     localStorage.setItem('amalgama-stats', JSON.stringify(statsArray));
-  }, [tasks, mode, completedCount]);
+  }, [tasks, mode, today]);
+
+  const handleCopyUserId = () => {
+    const userId = getUserId();
+    navigator.clipboard.writeText(userId);
+    toast.success('ID скопирован!', { duration: 2000 });
+  };
+
+  const handleSetUserId = () => {
+    if (newUserId.trim()) {
+      setUserId(newUserId.trim());
+    }
+  };
+
+  const totalMinTime = tasks.reduce((sum, task) => sum + task.minTime, 0);
+  const totalMaxTime = tasks.reduce((sum, task) => sum + task.maxTime, 0);
+  const completedCount = tasks.filter((task) => task.completed).length;
+  const progressPercent = (completedCount / tasks.length) * 100;
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -169,6 +236,86 @@ export default function ProtocolView({ mode }: ProtocolViewProps) {
       initial="hidden"
       animate="visible"
     >
+      {/* Sync indicator */}
+      <motion.div variants={itemVariants} className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {/* Sync button */}
+          <button
+            onClick={() => setShowSyncPanel(!showSyncPanel)}
+            className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs transition-all ${
+              showSyncPanel 
+                ? 'bg-accent/20 text-accent' 
+                : 'bg-card/20 text-primary-foreground/60 hover:bg-card/30'
+            }`}
+          >
+            <span className={`text-sm ${isSyncing ? 'animate-spin' : ''}`}>
+              {isSyncing ? '🔄' : '🔗'}
+            </span>
+            <span>Синхронизация</span>
+          </button>
+          
+          {lastSyncTime && (
+            <span className="text-xs text-primary-foreground/40">
+              {Math.floor((Date.now() - lastSyncTime) / 1000) < 60 
+                ? 'только что'
+                : `${Math.floor((Date.now() - lastSyncTime) / 60000)} мин назад`
+              }
+            </span>
+          )}
+        </div>
+      </motion.div>
+
+      {/* Sync panel */}
+      <AnimatePresence>
+        {showSyncPanel && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="p-3 rounded-xl bg-card/30 border border-primary-foreground/10 space-y-3">
+              <div className="text-xs text-primary-foreground/60">
+                Ваш ID для синхронизации между устройствами:
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <div className="flex-1 px-3 py-2 rounded-lg bg-card/50 text-xs font-mono text-primary-foreground/80 truncate">
+                  {getUserId()}
+                </div>
+                <button
+                  onClick={handleCopyUserId}
+                  className="px-3 py-2 rounded-lg bg-accent/20 text-accent text-xs hover:bg-accent/30 transition-colors"
+                >
+                  📋 Копировать
+                </button>
+              </div>
+              
+              <div className="text-xs text-primary-foreground/40 pt-2 border-t border-primary-foreground/10">
+                Введите ID с другого устройства:
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={newUserId}
+                  onChange={(e) => setNewUserId(e.target.value)}
+                  placeholder="user_1234567890_abc123"
+                  className="flex-1 px-3 py-2 rounded-lg bg-card/50 text-xs text-primary-foreground/80 placeholder:text-primary-foreground/30 outline-none border border-primary-foreground/10 focus:border-accent/50"
+                />
+                <button
+                  onClick={handleSetUserId}
+                  disabled={!newUserId.trim()}
+                  className="px-3 py-2 rounded-lg bg-accent/20 text-accent text-xs hover:bg-accent/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Применить
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Header - compact */}
       <motion.div variants={itemVariants} className="flex items-center justify-between">
         <div>
