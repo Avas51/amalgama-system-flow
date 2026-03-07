@@ -14,7 +14,10 @@ const modeInfo = {
     color: 'text-blue-300',
     bgColor: 'bg-blue-500/10',
     borderColor: 'border-blue-400/30',
-    ruleText: 'Время не упущено, всё как и планировалось. Неопределённости нет.',
+    ruleText: 'Время не упущено, всё как и планировалось. Неопределённости нет. Объявляю: ДЕЙСТВУЮ ПО РЕЖИМУ АЛЬФА!',
+    declaration: 'ДЕЙСТВУЮ ПО РЕЖИМУ АЛЬФА!',
+    preamble: 'Время не упущено, всё как и планировалось. Неопределённости нет. Объявляю:',
+    explanation: 'Официальное заявление фиксирует выбранную стратегию поведения, устраняет внутреннюю неопределённость и даёт чёткий сигнал психике о режиме работы на сегодня.',
     isPositive: true,
   },
   beta: {
@@ -23,7 +26,10 @@ const modeInfo = {
     color: 'text-amber-300',
     bgColor: 'bg-amber-500/10',
     borderColor: 'border-amber-400/30',
-    ruleText: 'Идеальное время упущено — официально объявите переход в этот режим.',
+    ruleText: 'Идеальное время упущено, но намерение действовать никуда не делось. Заявляю: ДЕЙСТВУЮ ПО РЕЖИМУ БЕТА!',
+    declaration: 'ДЕЙСТВУЮ ПО РЕЖИМУ БЕТА!',
+    preamble: 'Идеальное время упущено, но намерение действовать никуда не делось. Заявляю:',
+    explanation: 'Признание смены обстоятельств без самокритики снимает тревогу. Заявление о новом режиме восстанавливает контроль и предотвращает «скатывание» в хаос.',
     isPositive: false,
   },
   gamma: {
@@ -32,7 +38,10 @@ const modeInfo = {
     color: 'text-red-300',
     bgColor: 'bg-red-500/10',
     borderColor: 'border-red-400/30',
-    ruleText: 'Кризисный режим — официально объявите переход и действуйте.',
+    ruleText: 'Время упущено, но намерение действовать на месте. Заявляю: ДЕЙСТВУЮ В РЕЖИМЕ ГАММА!',
+    declaration: 'ДЕЙСТВУЮ В РЕЖИМЕ ГАММА!',
+    preamble: 'Время упущено, но намерение действовать на месте. Заявляю:',
+    explanation: 'Даже в кризисной ситуации официальное заявление режима сохраняет структуру дня. Это предотвращает полное опускание рук и позволяет извлечь максимум из оставшегося времени.',
     isPositive: false,
   },
 };
@@ -74,21 +83,25 @@ export default function GoldenRule({ activeMode }: GoldenRuleProps) {
               className="overflow-hidden"
             >
               <div className="mt-3 pt-3 border-t border-primary-foreground/10">
+                {/* Declaration text */}
                 <motion.div
                   key={activeMode}
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   className={`p-3 rounded-lg ${current.bgColor} border ${current.borderColor} text-center`}
                 >
-                  <span className={`text-sm font-bold ${current.color}`}>
-                    {current.ruleText}
+                  <p className="text-sm text-primary-foreground/90 mb-1">
+                    {current.preamble}
+                  </p>
+                  <span className="text-base font-bold text-yellow-400">
+                    {current.declaration}
                   </span>
                 </motion.div>
-                {!current.isPositive && (
-                  <p className="text-[10px] text-primary-foreground/50 mt-2 text-center">
-                    Это мгновенно убирает неопределённость и сохраняет контроль
-                  </p>
-                )}
+                
+                {/* Psychological explanation */}
+                <p className="text-[10px] text-primary-foreground/50 mt-2 text-center italic">
+                  💡 {current.explanation}
+                </p>
               </div>
             </motion.div>
           )}

@@ -1,17 +1,26 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Button } from '@/components/ui/button';
+import { useLocation } from 'wouter';
+import { subscribeToStats, DayStats } from '@/lib/statsService';
 
-interface DayStats {
-  date: string;
-  mode: 'alpha' | 'beta' | 'gamma';
-  completedTasks: number;
-  totalTasks: number;
-  completionPercent: number;
+// Extended interface with missed flag
+interface DayWithMissed extends DayStats {
+  isMissed?: boolean;
+}
+
+// Get all dates between two dates
+function getDatesBetween(startDate: Date, endDate: Date): string[] {
+  const dates: string[] = [];
+  const current = new Date(startDate);
+  while (current <= endDate) {
+    dates.push(current.toISOString().split('T')[0]);
+    current.setDate(current.getDate() + 1);
+  }
+  return dates;
 }
 
 // Monthly group component with collapsible days
-function MonthlyGroup({ monthKey, days }: { monthKey: string; days: DayStats[] }) {
+function MonthlyGroup({ monthKey, days, missedDays }: { monthKey: string; days: DayWithMissed[]; missedDays: number }) {
   const [isOpen, setIsOpen] = useState(false);
   
   const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 
@@ -20,17 +29,11 @@ function MonthlyGroup({ monthKey, days }: { monthKey: string; days: DayStats[] }
   const [year, month] = monthKey.split('-');
   const monthName = monthNames[parseInt(month) - 1];
   
-  // Calculate monthly average
-  const avgCompletion = Math.round(days.reduce((sum, d) => sum + d.completionPercent, 0) / days.length);
-  const totalCompleted = days.reduce((sum, d) => sum + d.completedTasks, 0);
-  const totalTasks = days.reduce((sum, d) => sum + d.totalTasks, 0);
-  
-  // Count modes
-  const modeCounts = {
-    alpha: days.filter(d => d.mode === 'alpha').length,
-    beta: days.filter(d => d.mode === 'beta').length,
-    gamma: days.filter(d => d.mode === 'gamma').length,
-  };
+  // Calculate monthly average (only for active days)
+  const activeDays = days.filter(d => !d.isMissed);
+  const avgCompletion = activeDays.length > 0 
+    ? Math.round(activeDays.reduce((sum, d) => sum + d.completionPercent, 0) / activeDays.length)
+    : 0;
 
   return (
     <div className="rounded-lg bg-card/20 border border-primary-foreground/10 overflow-hidden">
@@ -51,7 +54,10 @@ function MonthlyGroup({ monthKey, days }: { monthKey: string; days: DayStats[] }
         
         {/* Stats summary */}
         <div className="flex items-center gap-3 text-xs text-primary-foreground/60">
-          <span>{days.length} дн.</span>
+          <span>{activeDays.length} дн.</span>
+          {missedDays > 0 && (
+            <span className="text-red-400/70">−{missedDays}</span>
+          )}
           <span className="text-accent font-medium">{avgCompletion}%</span>
         </div>
         
@@ -70,37 +76,59 @@ function MonthlyGroup({ monthKey, days }: { monthKey: string; days: DayStats[] }
           {days.slice().reverse().map((day) => (
             <div
               key={day.date}
-              className="flex items-center gap-2 py-1 px-2 rounded hover:bg-card/30 transition-colors"
+              className={`flex items-center gap-2 py-0.5 px-2 rounded transition-colors ${
+                day.isMissed 
+                  ? 'bg-red-500/5 hover:bg-red-500/10' 
+                  : 'hover:bg-card/30'
+              }`}
             >
               {/* Date */}
-              <span className="text-xs text-primary-foreground/70 w-8">
+              <span className={`text-[10px] w-6 ${day.isMissed ? 'text-red-400/50' : 'text-primary-foreground/70'}`}>
                 {new Date(day.date).getDate()}
               </span>
               
-              {/* Mode badge */}
-              <span className={`w-4 h-4 rounded flex items-center justify-center text-[10px] ${
-                day.mode === 'alpha' ? 'bg-blue-500/30 text-blue-200' :
-                day.mode === 'beta' ? 'bg-amber-500/30 text-amber-200' :
-                'bg-red-500/30 text-red-200'
-              }`}>
-                {day.mode.charAt(0).toUpperCase()}
-              </span>
+              {/* Mode badge or missed indicator */}
+              {day.isMissed ? (
+                <span className="w-3 h-3 rounded flex items-center justify-center text-[8px] bg-red-500/20 text-red-300/70">
+                  −
+                </span>
+              ) : (
+                <span className={`w-3 h-3 rounded flex items-center justify-center text-[9px] ${
+                  day.mode === 'alpha' ? 'bg-blue-500/30 text-blue-200' :
+                  day.mode === 'beta' ? 'bg-amber-500/30 text-amber-200' :
+                  'bg-red-500/30 text-red-200'
+                }`}>
+                  {day.mode.charAt(0).toUpperCase()}
+                </span>
+              )}
               
-              {/* Progress bar */}
-              <div className="flex-1 h-1 bg-card/50 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-gradient-to-r from-accent to-secondary"
-                  style={{ width: `${day.completionPercent}%` }}
-                />
-              </div>
+              {/* Progress bar or empty line */}
+              {day.isMissed ? (
+                <div className="flex-1 h-px bg-red-500/20" />
+              ) : (
+                <div className="flex-1 h-px bg-card/50 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-accent to-secondary"
+                    style={{ width: `${day.completionPercent}%` }}
+                  />
+                </div>
+              )}
               
-              {/* Tasks & percent */}
-              <span className="text-[10px] text-primary-foreground/50 w-12 text-right">
-                {day.completedTasks}/{day.totalTasks}
-              </span>
-              <span className="text-xs font-medium text-accent w-8 text-right">
-                {day.completionPercent}%
-              </span>
+              {/* Tasks & percent or missed text */}
+              {day.isMissed ? (
+                <span className="text-[9px] text-red-400/50 w-16 text-right">
+                  пропуск
+                </span>
+              ) : (
+                <>
+                  <span className="text-[9px] text-primary-foreground/50 w-10 text-right">
+                    {day.completedTasks}/{day.totalTasks}
+                  </span>
+                  <span className="text-[10px] font-medium text-accent w-7 text-right">
+                    {day.completionPercent}%
+                  </span>
+                </>
+              )}
             </div>
           ))}
         </div>
@@ -112,46 +140,94 @@ function MonthlyGroup({ monthKey, days }: { monthKey: string; days: DayStats[] }
 export default function Statistics() {
   const [stats, setStats] = useState<DayStats[]>([]);
   const [selectedMode, setSelectedMode] = useState<'all' | 'alpha' | 'beta' | 'gamma'>('all');
+  const [location, navigate] = useLocation();
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Load stats from localStorage
+  // Load stats from Firestore with real-time updates
   useEffect(() => {
-    const savedStats = localStorage.getItem('amalgama-stats');
-    if (savedStats) {
-      try {
-        let parsedStats = JSON.parse(savedStats);
-        
+    setIsLoading(true);
+    
+    // Subscribe to real-time updates from Firestore
+    const unsubscribe = subscribeToStats((firestoreStats) => {
+      if (firestoreStats.length > 0) {
         // Clean up duplicate entries - keep only one entry per day (the one with most completed tasks)
         const dayMap = new Map<string, DayStats>();
-        parsedStats.forEach((stat: DayStats) => {
+        firestoreStats.forEach((stat) => {
           const existing = dayMap.get(stat.date);
           if (!existing || stat.completedTasks > existing.completedTasks) {
             dayMap.set(stat.date, stat);
           }
         });
         
-        const cleanedStats = Array.from(dayMap.values());
-        
-        // Save cleaned stats back to localStorage if there were duplicates
-        if (cleanedStats.length !== parsedStats.length) {
-          localStorage.setItem('amalgama-stats', JSON.stringify(cleanedStats));
+        setStats(Array.from(dayMap.values()));
+      } else {
+        // Fallback to localStorage if Firestore is empty
+        const savedStats = localStorage.getItem('amalgama-stats');
+        if (savedStats) {
+          try {
+            setStats(JSON.parse(savedStats));
+          } catch (e) {
+            console.error('Failed to parse stats:', e);
+            setStats([]);
+          }
         }
-        
-        setStats(cleanedStats);
-      } catch (e) {
-        console.error('Failed to parse stats:', e);
       }
-    }
+      setIsLoading(false);
+    });
+    
+    return () => unsubscribe();
   }, []);
 
+  // Calculate missed days
+  const getStatsWithMissedDays = (): DayWithMissed[] => {
+    if (stats.length === 0) return [];
+    
+    // Find date range: from first stat to today
+    const sortedDates = stats.map(s => s.date).sort();
+    const firstDate = new Date(sortedDates[0]);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const allDatesInRange = getDatesBetween(firstDate, today);
+    const statsDateSet = new Set(stats.map(s => s.date));
+    
+    const result: DayWithMissed[] = [];
+    
+    allDatesInRange.forEach(date => {
+      if (statsDateSet.has(date)) {
+        const stat = stats.find(s => s.date === date)!;
+        result.push({ ...stat, isMissed: false });
+      } else {
+        // Add missed day
+        result.push({
+          date,
+          mode: 'alpha',
+          completedTasks: 0,
+          totalTasks: 0,
+          completionPercent: 0,
+          updatedAt: Date.now(),
+          isMissed: true,
+        });
+      }
+    });
+    
+    return result;
+  };
+
+  const statsWithMissed = getStatsWithMissedDays();
+  
   const filteredStats = selectedMode === 'all' 
-    ? stats 
-    : stats.filter(s => s.mode === selectedMode);
+    ? statsWithMissed 
+    : statsWithMissed.filter(s => !s.isMissed && s.mode === selectedMode);
 
   const modeStats = {
     alpha: stats.filter(s => s.mode === 'alpha'),
     beta: stats.filter(s => s.mode === 'beta'),
     gamma: stats.filter(s => s.mode === 'gamma'),
   };
+  
+  const totalMissedDays = statsWithMissed.filter(s => s.isMissed).length;
+  const totalActiveDays = stats.length;
 
   const calculateAverageCompletion = (modeStats: DayStats[]) => {
     if (modeStats.length === 0) return 0;
@@ -186,18 +262,26 @@ export default function Statistics() {
       initial="hidden"
       animate="visible"
     >
-      {/* Header with back button - compact */}
-      <motion.div variants={itemVariants} className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl md:text-3xl font-bold text-accent">📊 Статистика</h2>
+      {/* Header with tabs */}
+      <motion.div variants={itemVariants}>
+        <h2 className="text-2xl md:text-3xl font-bold text-accent mb-3">📊 Статистика</h2>
+        {/* Tabs - same as on main page */}
+        <div className="flex gap-2">
+          {[
+            { id: 'amalgama', label: 'Амальгама', icon: '📖' },
+            { id: 'protocol', label: 'Протокол', icon: '📋' },
+          ].map((tab) => (
+            <motion.button
+              key={tab.id}
+              onClick={() => navigate('/')}
+              whileTap={{ scale: 0.95 }}
+              className="flex-1 px-3 py-2 rounded-xl font-medium transition-all duration-200 text-sm bg-card/30 text-primary-foreground/80 hover:bg-card/50 border border-primary-foreground/10"
+            >
+              <span className="mr-1">{tab.icon}</span>
+              {tab.label}
+            </motion.button>
+          ))}
         </div>
-        <Button
-          onClick={() => window.history.back()}
-          variant="outline"
-          size="sm"
-        >
-          ← Назад
-        </Button>
       </motion.div>
 
       {/* Mode filter - compact */}
@@ -269,6 +353,25 @@ export default function Statistics() {
         ))}
       </motion.div>
 
+      {/* Missed days summary */}
+      {totalMissedDays > 0 && (
+        <motion.div
+          variants={itemVariants}
+          className="p-3 rounded-xl bg-red-500/10 border border-red-400/20"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-sm">⚠️</span>
+              <span className="text-xs text-primary-foreground/70">Пропущено дней</span>
+            </div>
+            <span className="text-sm font-bold text-red-400">{totalMissedDays}</span>
+          </div>
+          <p className="text-[10px] text-primary-foreground/50 mt-1">
+            {totalActiveDays} активных из {totalActiveDays + totalMissedDays} дней отслеживания
+          </p>
+        </motion.div>
+      )}
+
       {/* Daily stats chart - compact with monthly grouping */}
       {filteredStats.length > 0 ? (
         <motion.div
@@ -279,7 +382,7 @@ export default function Statistics() {
           <div className="space-y-2">
             {(() => {
               // Group stats by month
-              const groupedByMonth: { [key: string]: DayStats[] } = {};
+              const groupedByMonth: { [key: string]: DayWithMissed[] } = {};
               filteredStats.forEach(day => {
                 const date = new Date(day.date);
                 const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
@@ -296,7 +399,8 @@ export default function Statistics() {
                 <MonthlyGroup 
                   key={monthKey} 
                   monthKey={monthKey} 
-                  days={groupedByMonth[monthKey]} 
+                  days={groupedByMonth[monthKey]}
+                  missedDays={groupedByMonth[monthKey].filter(d => d.isMissed).length}
                 />
               ));
             })()}

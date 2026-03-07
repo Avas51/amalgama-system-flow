@@ -1,6 +1,6 @@
 {
   "framework": null,
-  "buildCommand": "cd client && bun install && bun run build",
-  "outputDirectory": "client/dist",
+  "buildCommand": "bun install && bun run build",
+  "outputDirectory": "dist/public",
   "installCommand": "bun install"
 }

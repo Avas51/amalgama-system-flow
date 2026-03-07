@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
+import { saveStatsToFirestore, DayStats } from '@/lib/statsService';
 
 type Mode = 'alpha' | 'beta' | 'gamma';
 
@@ -109,14 +110,19 @@ export default function ProtocolView({ mode }: ProtocolViewProps) {
     const today = new Date().toISOString().split('T')[0];
     const completionPercent = Math.round((completedCount / tasks.length) * 100);
     
-    const stats = {
+    const stats: DayStats = {
       date: today,
       mode,
       completedTasks: completedCount,
       totalTasks: tasks.length,
       completionPercent,
+      updatedAt: Date.now(),
     };
     
+    // Save to Firestore
+    saveStatsToFirestore(stats);
+    
+    // Also save to localStorage as backup
     const savedStats = localStorage.getItem('amalgama-stats');
     let statsArray: any[] = [];
     if (savedStats) {
@@ -166,7 +172,9 @@ export default function ProtocolView({ mode }: ProtocolViewProps) {
       {/* Header - compact */}
       <motion.div variants={itemVariants} className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl md:text-3xl font-bold text-accent">{protocol.title}</h2>
+          <h2 className="text-2xl md:text-3xl font-bold text-accent">
+            {protocol.title} <span className="text-xl text-primary-foreground/70">— {Math.round(progressPercent)}%</span>
+          </h2>
           <p className="text-xs text-primary-foreground/60">{protocol.description}</p>
         </div>
         <div className="text-right">
